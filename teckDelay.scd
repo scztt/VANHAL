@@ -2,19 +2,21 @@
 
 SynthDef.fx(\teckDelay, {
     |in|
-    var delays = DC.ar([0.1, 0.5, 0.7, 3, 3, 4, 3, 6, 8, 4.1]);
-    var trig, crush, kickEnv, kickCurve;
+    var delays = DC.ar([0.1, 0.5, 0.7, 3, 3, 4, 3, 6, 8, 4.1]) / 2;
+    var trig, crush, kickEnv, kickCurve, buffer, phase;
     var rev = DC.ar([0, 0, 0]);
     
-    trig = Impulse.ar(16) * Trig.ar(Impulse.ar(6/8), 0.5) * Trig.ar(Dust.ar(0.5), 1.5);
+    trig = Impulse.ar(8) * Trig.ar(Impulse.ar(6/8), 0.36) * Trig.ar(Dust.ar(0.2), 0.6);
     
-    crush = PlayBuf.ar(
-        2,
-        SAMP("zoom recordings/_incoming/greece/*")["spring"],
-        startPos: Rand(0, 44100*60),
-        loop: 1
+    buffer = SAMP("vanhalen/*")["mixdown"];
+    
+    phase = Phasor.ar(
+        1, 
+        rate: 0.7 * BufRateScale.kr(buffer),
+        start: "1:35".asSecs * BufSamples.kr(buffer),
+        end: "1:55".asSecs * BufSamples.kr(buffer),
     );
-    
+    crush = BufRd.ar(2, buffer, phase, interpolation: 4);    
     crush = BandSplitter8.ar(crush, *Array.geom(7, 100, 2.2));
     
     kickEnv = PulseDivider.ar(
@@ -22,12 +24,16 @@ SynthDef.fx(\teckDelay, {
         TChoose.ar(trig, DC.ar([6, 8, 12]))
     );
     kickCurve = TRand.ar(0, 1, kickEnv).lincurve(0, 1, -8, 12, -3).lag(0.1);
-    kickEnv = Env.perc(0.01, TRand.ar(0, 1, kickEnv).lincurve(0, 1, 2.5, 8, -4)).ar(gate:kickEnv);
+    kickEnv = Env.perc(
+        3,
+        TRand.ar(0, 1, kickEnv).lincurve(0, 1, 2.5, 8, -4),
+        curve: -8 * [-1, 1]
+    ).ar(gate:kickEnv);
     
     in = (0.dbamp * in) + (
         -0.dbamp * kickEnv * Formant.ar(
-            kickEnv.lincurve(0, 1, 10, [96, 96.5, 40], kickCurve) ,
-            kickEnv.lincurve(0, 1, 10, 120, kickCurve + 6),
+            kickEnv.lincurve(0, 1, 10, [86, 86.5, 40], kickCurve) ,
+            kickEnv.lincurve(0, 1, 10, 220, kickCurve + 9),
             kickEnv.lincurve(0, 1, 0, 150, kickCurve + 8)
         ).sum
     );
@@ -41,7 +47,10 @@ SynthDef.fx(\teckDelay, {
         bandTrig = Dust.ar(0.5);
         envTrig = trig * TWChoose.ar(trig, DC.ar([0, 1]), DC.ar([100, 1]), 1);
         
-        crushBand = (12.dbamp * crush[i]) + (-14.dbamp * in);
+        crushBand = crush[i];
+        crushBand = 
+            (\crushAmp.kr(24.dbamp) * crushBand) 
+            + (-0.dbamp * in);
         crushBand = crushBand + (
             LFDNoise3.ar(1).lincurve(-1, 1, -60, -4, 2).dbamp
                 * Formant.ar(
@@ -50,7 +59,7 @@ SynthDef.fx(\teckDelay, {
                     LFDNoise3.kr(1/2).exprange(10, 500),
                 )
         );
-        crushBand = crushBand * Env.perc(0.01, 1.8).ar(
+        crushBand = crushBand * Env.perc(0.8, 1.8, curve:-1 * [-1, 1]).ar(
             gate:PulseDivider.ar(
                 trig, 
                 TChoose.ar(trig, DC.ar([1, 2, 3, 4, 6, 5])) * 2,
@@ -63,7 +72,7 @@ SynthDef.fx(\teckDelay, {
             (SinOsc.kr(1/8, Rand(0, 2), 0.3) + 22 + [0, 4, 6]).midicps[i % 3].reciprocal,
             0.1, 0.04
         ));
-        crushBand = 16.dbamp * crushBand.collect {
+        crushBand = 0.dbamp * crushBand.collect {
             |crushBand|
             
             4.do {
@@ -142,5 +151,5 @@ SynthDef.fx(\teckDelay, {
     ));
     
     in.assertChannels(2);
-}).add;
+}).addReplace;
 )
