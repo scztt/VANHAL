@@ -5,7 +5,7 @@ Require("teckDelay");
 (
 Pdef(\notes, PS(Pbind(
     \scale, Scale.hexSus,
-    \octave, 3 + [0, 1, 1.01, 0],
+    \octave, 4 + [0, 1, 1.01, 0],
     \degree, 0 + Ptuple([
         Pseq([0, 1], inf).durStep(24),
         3,
@@ -14,6 +14,19 @@ Pdef(\notes, PS(Pbind(
     ]),
     \degree, Pkey(\degree) + Pseq([0, 6], inf).durStep(48),
 )));
+
+Pdef(\notes2, PS(Pbind(
+    \scale, Scale.hexSus,
+    \octave, 4 + [0, 2, 1.01, 0],
+    \degree, 0 + Ptuple([
+        Pseq([0, 1, 4], inf),
+        Prand([3, 4, 7], inf),
+        Pseq([-1, -2, 6, -2], inf),
+        0
+    ]),
+    \degree, Pkey(\degree) + Pseq([0, 6, 3, -2], inf),
+)));
+
 
 Pdef(\van, Pbind(
     // \grainSampler_2ch,
@@ -24,7 +37,7 @@ Pdef(\van, Pbind(
         1 * Prand([5, 3, 2.4, 1.7, 0.2, 0.1, 0.54342, 0.7643, 0.123, 0.05], inf),
         3
     ),
-    \legato, 1.2,
+    \legato, 1.4,
     
     \amp, -6.dbamp * [1, 1, 1, 1],
     \pan, Pwhite(-1, 1),
@@ -36,13 +49,13 @@ Pdef(\van, Pbind(
             trig = \trig.tr(0);
             rate = \rate.kr(2);
             
-            trig = Decay.kr(trig, 2);
+            trig = Decay.kr(trig, 6);
             
             SinOsc.ar(trig * rate + [0, 1/24].resamp1(4)).range(
                 "2:08".asSecs,
                 "2:54".asSecs
             )
-            + 0
+            + (0)
             + LFTri.ar(1/128).range(0, 8)
         },
         \trig, 1,
@@ -53,7 +66,9 @@ Pdef(\van, Pbind(
     
     \trigRate, { ~detunedFreq.value * 2 },
     
-    \density, 20,
+    \density, Ptuple(
+        Pwhite(0.0, 1.0).lincurve(0, 1, 6, 120, 3) ! 4
+    ),
     
     \ampEnv, {
         `(Env.perc(0.0001, ~sustain.value, curve:-12 * [-1, 1]))
@@ -62,14 +77,17 @@ Pdef(\van, Pbind(
     
     \trig, 0,
     
-    \grainRate, [0, 4, -12, 0].midiratio,
-    
-    // \filtLo, 20, 
-    // \filtHi, 19000,
-    // \filtHi, Pmod({
-    //     SinOsc.kr(1/256, 0 + [0, 0.2].resamp1(4) - (pi/2)).exprange(100, 5600)
-    //         * Env.perc(4, 0.2).kr(gate:Dust.ar(0.2)).linlin(0, 1, 0, 3).midiratio
-    // }),
+    \grainRate,  Pmod({
+        (
+            [0, 4, -12, 0]
+            + 4.collect {
+                Env.sine(1).ar(gate:Dust.ar(0.2))
+            }.range(0, 24)
+            + 4.collect {
+                Env.sine(1).ar(gate:Dust.ar(0.2))
+            }.range(0, -24)
+        ).midiratio
+    }),
     
     \finish, {
         // ~grainRate = ~grainRate.value;
@@ -81,8 +99,10 @@ Pdef(\delay, Pmono(
     \grainDelay2,
     \parentType, \grainDelay2,
     
+    \dur, Prand([1/2, 3, 4, 5], inf),
+    
     \finish, {
-        ~in = ~in.value.postln;
+        ~in = ~in.value;
         ~grainRate = ~grainRate.value;
         ~trigRate = ~trigRate.value;
         ~grainRate = ~grainRate.value;
@@ -92,7 +112,7 @@ Pdef(\delay, Pmono(
     \delay, Pmod({
         var flux = LFDNoise3.ar(1/4).exprange(
             1/64,
-            1/8
+            1/4
         );
         
         4.collect {
@@ -100,66 +120,73 @@ Pdef(\delay, Pmono(
         }
     }).expand,
     \delayV, Pmod({
-        1 / SinOsc.ar(1/24).exprange(20, 200)
+        1 / LFDNoise3.ar(1/6).exprange(8, 600)
     }),
     
-    \octave, 2,
+    // \octave, 2,
     // \degree, Pseq([0, -1], inf).durStep(16) + (1 * [0, 2.024, 5.03, 0.0253]),
     
     \delayRound, { ~detunedFreq.value.reciprocal },
-    \delayRoundLag, 8,
+    \delayRoundLag, 0.05,
     \delayRoundOffset, Pmod(
         {
             var roundOff = \roundOff.kr([1, 1, 1, 1]).lag(8);
-            0.7 * roundOff * LFDNoise3.ar(0.8).abs.lag(0.2 * [0.2, 1.0, 0.4, 0.0])
+            0.2 * roundOff * LFDNoise3.ar(1/2).abs.lag(0.7 * [0.2, 1.0, 0.4, 0.0])
         }, 
         \roundOff, Pkey(\delayRound)
     ).expand,
     
     \trig, 0,
     
-    \trigRate, 60 * 12,
+    \trigRate, 60 * 16,
     \density, Pmod({
-        SinOsc.ar(LFDNoise3.ar(1/4).exprange(1/2, 4))
-            .exprange(20, 400)
-    }),
+        SinOsc.ar(LFDNoise3.ar(1/2).exprange(1/2, 28), [0, 0.1].resamp1(4))
+            .exprange(20, 600)
+    }).expand,
     
     \grainRate, Pmod({
-        4.collect {
-            var trig = Dust.ar(0.12);
+        1.collect {
+            var trig = Dust.ar(0.52);
             (
                 Env.sine(4).ar(gate:trig)
-                    * LFDNoise3.ar(1/4).range(1, 0.0)
+                    * LFDNoise3.ar(1/4).range(-0.1, 0.1)
             ).midiratio
         }
     }).expand,
+    \grainRateV, 0.003,
+    // \grainRate, { (~detunedFreq.value.cpsmidi - 28).midiratio.postln },
     
-    \feedAmp, -40.dbamp,
+    \feedAmp, -46.dbamp,
     \feedDist, Pmod({
-        44 + Env.perc(2, 4, curve:\sine).ar(gate:Dust.ar(0.4)).linlin(0, 1, 0, 15)
+        54 + Env.perc(2, 4, curve:\sine).ar(gate:Dust.ar(0.4)).linlin(0, 1, 0, 25)
     }),
     
     \filtLo, 20,
     \filtHi, Pexprand(2000, 19900).durStep(12),
     \filtLag, 24,
     
-    \pan, [-0.8, 0.8].resamp1(4),
-    \panV, 0.1,
+    \pan, Pmod({
+        4.collect {
+            0.8 * LFDNoise3.ar(1/4).range(-1, 1)
+        }
+    }),
+    \panV, 0.4,
     
     \amp, -10.dbamp,
-    \dryAmp, 10.dbamp
-) <> Pdef(\notes));
+    \dryAmp, 0.dbamp
+) <> Pdef(\notes2));
 
 Pdef(\teckDelay, Pmono(
     \teckDelay,
     
     \inEnv, 0,
     
-    \inAmp, -20.dbamp,
+    \dist, 0,
+    \inAmp, -30.dbamp,
     \amp, -12.dbamp,
-    \feed, -6.dbamp,
+    \feed, -9.dbamp,
     \dryAmp, 0.dbamp,
-    \wetAmp, 0.dbamp,
+    \wetAmp, 6.dbamp,
 ));
 
 Pdef(\vanCompress,
@@ -184,44 +211,61 @@ Pdef(\player, Pio(Ppar(
 
 
 ~vanCompress.gui
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        
+        
+            
+                
+                    
+                        
+                            
+                                
+                                    
+                                        
+                                            
+                                                
+                                                    
+                                                        
+                                                            
+                                                                
+                                                                    
+                                                                        
+                                                                            
+                                                                                
+                                                                                    
+                                                                                        
+                                                                                            
+                                                                                                
+                                                                                                    
+                                                                                                        
+                                                                                                            
+                                                                                                                
+                                                                                                                    
+                                                                                                                        
+                                                                                                                            
+                                                                                                                                
+                                                                                                                                    
+                                                                                                                                        
+                                                                                                                                            
+                                                                                                                                                
+                                                                                                                                                    
+                                                                                                                                                        
+                                                                                                                                                            
+                                                                                                                                                                
+                                                                                                                                                                    
+                                                                                                                                                                        
+                                                                                                                                                                            
+                                                                                                                                                                                
+                                                                                                                                                                                    
+                                                                                                                                                                                        
+                                                                                                                                                                                            
+                                                                                                                                                                                                
+                                                                                                                                                                                                    
+                                                                                                                                                                                                        
+                                                                                                                                                                                                            
+                                                                                                                                                                                                                
+                                                                                                                                                                                                                    
+                                                                                                                                                                                                                        
+                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                
+                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                        
