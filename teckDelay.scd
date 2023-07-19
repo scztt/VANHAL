@@ -3,10 +3,12 @@
 SynthDef.fx(\teckDelay, {
     |in|
     var delays = DC.ar([0.1, 0.5, 0.7, 3, 3, 4, 3, 6, 8, 4.1]) / 2;
-    var trig, crush, kickEnv, kickCurve, buffer, phase;
+    var trig, crush, kickEnv, kickCurve, buffer, phase, dist;
     var rev = DC.ar([0, 0, 0]);
     
     trig = Impulse.ar(8) * Trig.ar(Impulse.ar(6/8), 0.36) * Trig.ar(Dust.ar(0.2), 0.6);
+    
+    dist  = \dist.kr(0);
     
     buffer = SAMP("vanhalen/*")["mixdown"];
     
@@ -30,6 +32,15 @@ SynthDef.fx(\teckDelay, {
         curve: -8 * [-1, 1]
     ).ar(gate:kickEnv);
     
+    // in = Compander.ar(in, in.mean, 0.7, 1, 1/200);
+    // in = SoftClipAmp4.ar(in);
+    
+    in = blend(
+        in,
+        LockhartWavefolder.ar(in, 4),
+        dist
+    );
+    
     in = (0.dbamp * in) + (
         -0.dbamp * kickEnv * Formant.ar(
             kickEnv.lincurve(0, 1, 10, [86, 86.5, 40], kickCurve) ,
@@ -41,8 +52,6 @@ SynthDef.fx(\teckDelay, {
     in = BandSplitter8.ar(in, *Array.geom(7, 100, 2.2)).collect({
         |in, i|
         var envTrig, bandTrig, crushBand, kickEnv;
-        
-        // in = in.tanh;
         
         bandTrig = Dust.ar(0.5);
         envTrig = trig * TWChoose.ar(trig, DC.ar([0, 1]), DC.ar([100, 1]), 1);
@@ -105,7 +114,7 @@ SynthDef.fx(\teckDelay, {
             \inEnv.kr(1)
         );
         
-        in = (-2.dbamp * in) + crushBand;
+        in = (-6.dbamp * in) + crushBand;
         in = LeakDC.ar(in);
         
         in.assertChannels(2);
@@ -124,7 +133,7 @@ SynthDef.fx(\teckDelay, {
             
             // in = FreqShift.ar(in, SinOsc.kr(1/Rand(9, 10)).exprange(-0.02, 0.1));
             in = (1 * in) - (FreqShift.ar(in, SinOsc.kr(1/Rand(9, 10)).exprange(-0.02, 0.1)));
-            in = -6.dbamp * in;            
+            in = \feed.kr(-6.dbamp) * in;            
         }).sum;
         
         3.do {
@@ -138,7 +147,7 @@ SynthDef.fx(\teckDelay, {
         in;
     }).sum;
     
-    in = in + (-12.dbamp * (
+    in = in + (-22.dbamp * (
         JPverb.ar(
             rev[0], 0.1, 0.5, 4
         )

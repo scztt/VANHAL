@@ -2,18 +2,17 @@
 
 Require("teckDelay");
 
-
-
 (
 Pdef(\notes, PS(Pbind(
     \scale, Scale.hexSus,
-    \octave, [3, 3, 3, 3],
-    \degree, 5 + Pseq([
-        [ 0, 0.01, 1.02545, 0.134],
-        [ 0, 0.01, 1.02545, 0.134] - [0, 1],
-        [-2, 1.00, 3.01,    6],
-        [-2, 1.00, 3.01,    6] + [0, 4],
-    ], inf).durStep(32).trace + [0, 1, -7, 4]
+    \octave, 2 + [0, 2, 3, 0],
+    \degree, 0 + Ptuple([
+        Pseq([0, 1], inf).durStep(24),
+        3,
+        Pseq([-1, -2], inf).durStep(24),
+        0
+    ]),
+    \degree, Pkey(\degree) + Pseq([0, -2], inf).durStep(48),
 )));
 
 Pdef(\van, Pbind(
@@ -21,63 +20,57 @@ Pdef(\van, Pbind(
     \instrument, \grainSampler_2ch,
     \buf, SAMP("vanhalen/mixdown.wav", channels:1)[0],    
     
-    \dur, 16,
-    \legato, 1.5,
+    \dur, 6,
+    \legato, 2,
+    \trig, 0,
     
-    \amp, 0.dbamp * [1, 1, 1, 1],
-    \pan, 0.5 * [-1, 1],
+    \amp, -12.dbamp * [0, 0, 0, 0].dbamp,
+    \pan, 0.5 * [-1, 1].resamp1(4),
+    \ampEnv, `Env([0, 1, 0], [0.6, 0.4], -1 * [-1, 1], releaseNode:1),
+    \envScale, { ~sustain },
     
     \pos, Pmod(
         {
             var lfoRate = \lfoRate.kr(1);
             lfoRate = lfoRate + [0, 1/16].resamp1(4);
             
-            LFTri.ar(1/264).range(
-                "2:28".asSecs,
-                "2:36".asSecs
+            4.collect({
+                var trig = Dust.ar(8);
+                TRand.ar(0, 1, trig).lag3(0.05)
+            }).linlin(
+                0, 1,
+                "5:18".asSecs,
+                "5:21".asSecs
+            ) + (
+                \lfoScale.kr(1) 
+                    * SinOsc.ar(lfoRate, [0, pi].resamp1(4)).range(
+                        -1, 
+                        1
+                    )
             )
-            + (
-                \lfoScale.kr(1) * SinOsc.ar(lfoRate).range(-1, 1)
-            )
-        },
-        \lfoRate, 0.7,
-        \lfoScale, 0.2,
-        
+        }, 
+        \lfoScale, 0.6,
+        \lfoRate, 1/4
     ).expand,
     
-    \posV, 1/560,
-    \posRound, Pmod({ 
-        1 / LFDNoise3.ar(1/48).exprange(40, 700)
-    }),
-    \posRoundOffset, Pmod({
-        0.3 * (1/400) * SinOsc.ar(1/48, [0, pi]).range(-1, 1)
+    \posRound, 1 / 164,
+    \trigRate, Pmod({
+        (1) * 94 * LFDNoise3.ar(4 * [1, 1, 1, 1]).range(-2.5, 2.5).midiratio
     }).expand,
+    // \trigRateV, 0.001,
+    \density, 490,
     
-    \trigRate, 60 * 4,
-    \trigRateV, 0.05,
+    \grainRate, (-12 + [0, 0.04].resamp1(4)).midiratio,
     
-    \ampEnv, `Env([0, 1, 0], [6, 8], \sine, releaseNode:1),
-    
-    \trig, 0,
-    
-    \grainRate, { (~detunedFreq.value.cpsmidi - 42).midiratio },
-    
+    \filtLo, 20,
     \filtHi, Pmod({
-        SinOsc.ar(1/256, 0 + [0, 0.2].resamp1(4) - (pi/2)).exprange(100, 13000)
+        SinOsc.ar(1/256, 2 + [0, 0.2].resamp1(4) - (pi/2)).exprange(1000, 8000)
     }),
-    
-    \density, Pmod({
-        TRand.ar(0, 1, Impulse.ar(0) + Dust.ar(0.16)).linexp(0, 1, 20, 60).lag3(30)
-    }),
-    
     \finish, {
         ~grainRate = ~grainRate.value;
         ~trigRate = ~trigRate.value;
     }
-    
-    // \dur, 1,
-    // \legato, 1,
-) <> Pdef(\notes) );
+) <> Pdef(\notes));
 
 Pdef(\delay, Pmono(
     \grainDelay2,
@@ -91,68 +84,56 @@ Pdef(\delay, Pmono(
         ~delayRound = ~delayRound.value;
     },
     
+    \octave, Pkey(\octave) + 1,
+    
     \delay, Pmod({
-        var flux = SinOsc.ar(1/6).exprange(
-            LFDNoise3.kr(1/64).exprange(1/500, 1/8),
-            3/4
-        );
+        var trig = Impulse.ar(4);
+        var delay = 1 / TExpRand.ar(40, 400);
+        
         4.collect {
-            DelayC.ar(flux, 1, LFDNoise3.kr(1/8).range(0, 1/32))
+            |i|
+            delay.lag(1 * [0.05, 0.34, 0.54, 0.12])
         }
     }).expand,
-    \delayV, 1/490,
-    
-    \scale, Scale.hexSus,
-    \octave, 2,
-    \degree, Pseq([0, -1], inf).durStep(16) + (1 * [0, 3.024, 5.03, 0.0253]),
-    
-    \delayRound, { ~detunedFreq.value.reciprocal },
-    \delayRoundLag, 8,
-    \delayRoundOffset, Pmod(
-        {
-            var roundOff = \roundOff.kr([1, 1, 1, 1]).lag(8);
-            0.2 * roundOff * LFDNoise3.ar(1/1).lag(0.4 * [0.1, 1.0, 0.4, 0.0].scramble)
-        }, 
-        \roundOff, Pkey(\delayRound)
-    ).expand,
     
     \trig, 0,
     
-    \trigRate, 60 * 3,
-    \trigRateV, 0.03,
-    \density, 40,
+    \trigRate, 60 * 8,
+    
+    \density, 450,
     
     \grainRate, Pmod({
         4.collect {
-            var trig = Dust.ar(0.13);
+            var trig = Dust.ar(0.05);
             (
                 Env.sine(4).ar(gate:trig)
-                    * LFDNoise3.ar(1/4).range(-0.02, 0.02)
+                    * LFDNoise3.ar(1/8).range(-0.5, 0.0)
             ).midiratio
         }
     }).expand,
     
-    \feedAmp, -24.dbamp,
-    \feedDist, Pmod({ 
-        SinOsc.kr(1/24, [0, pi].resamp1(4) - (pi/2)).lincurve(-1, 1, 0.5, 26, 8) 
-    }).expand,
-    \filtLo, 60,
-    \filtHi, Pexprand(600, 15000).durStep(12),
+    \feedAmp, -28.dbamp,
+    \feedDist, 74.6, 
+    
+    \filtLo, 20,
+    \filtHi, Pexprand(20, 1900).durStep(12),
     \filtLag, 24,
     
     \pan, [-0.8, 0.8].resamp1(4),
     \panV, 0.2,
     
-    \amp, -27.dbamp,
-    \dryAmp, 10.dbamp
+    \inAmp, -20.dbamp,
+    \amp, -2.dbamp,
+    \dryAmp, -94.dbamp
 ) <> Pdef(\notes));
 
 Pdef(\teckDelay, Pmono(
     \teckDelay,
-    \amp, -36.dbamp,
-    \inAmp, -6.dbamp,
+    \amp, -16.dbamp,
+    \inAmp, -16.dbamp,
+    \crushAmp, 0.dbamp,
     \dryAmp, 0.dbamp,
-    \wetAmp, -0.dbamp,
+    \wetAmp, 10.dbamp,
     \inEnv, 0
 ));
 
@@ -165,12 +146,13 @@ Pdef(\vanCompress,
 
 Pdef(\player, Pio(Ppar(
     Pio.make({
-        // ~van.out = 0;
-        ~van.out = Pout(\delay, 2);
-        ~delay.in = Pin(\delay, 2);
-        ~teckDelay.in = ~delay;
-        ~vanCompress.in = ~teckDelay;
-        ~vanCompress.out = 0;
+        ~van.out = 0;
+        // ~van.out = Pout(\delay, 2);
+        // ~delay.in = Pin(\delay, 2);
+        // ~delay.out = 0;
+        // ~teckDelay.in = ~delay;
+        // ~vanCompress.in = ~teckDelay;
+        // ~vanCompress.out = 0;
     }, Pdef.all)
 ))).play
 )
@@ -208,4 +190,3 @@ Pdef(\player, Pio(Ppar(
                                                                                                                     
                                                                                                                         
                                                                                                                             
-                                                                                                                                

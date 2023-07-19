@@ -83,7 +83,7 @@ Pdef(\delay, Pmono(
     \octave, Pkey(\octave) + 1,
     
     \delay, Pmod({
-        var flux = LFDNoise3.ar(1/4).exprange(
+        var flux = LFDNoise3.ar(1/14).exprange(
             1/8,
             2
         ).reciprocal;
@@ -93,7 +93,7 @@ Pdef(\delay, Pmono(
         }
     }).expand,
     \delayV, Pmod({
-        1 / SinOsc.ar(1/24).exprange(10, 200)
+        1 / SinOsc.ar(1/124).exprange(10, 200)
     }),
     
     \delayRound, { ~detunedFreq.value.reciprocal },
@@ -101,7 +101,7 @@ Pdef(\delay, Pmono(
     \delayRoundOffset, Pmod(
         {
             var roundOff = \roundOff.kr([1, 1, 1, 1]).lag(8);
-            0.6 * roundOff * LFDNoise3.ar(1/4).lag(0.1 * [0.1, 1.0, 0.4, 0.0].scramble)
+            0.6 * roundOff * LFDNoise3.ar(1/14).lag(0.1 * [0.1, 1.0, 0.4, 0.0].scramble)
         }, 
         \roundOff, Pkey(\delayRound)
     ).expand,
@@ -124,7 +124,7 @@ Pdef(\delay, Pmono(
     
     \feedAmp, -38.dbamp,
     
-    \feedDist, 0.6,
+    \feedDist, 0.3,
     \filtLo, 60,
     \filtHi, Pexprand(200, 5900).durStep(12),
     \filtLag, 24,

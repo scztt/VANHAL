@@ -5,7 +5,7 @@ Require("teckDelay");
 (
 Pdef(\notes, PS(Pbind(
     \scale, Scale.hexSus,
-    \octave, 5 + [0, 1, 1.01, 0],
+    \octave, 4 + [0, 1, 1.01, 0],
     \degree, 0 + Ptuple([
         Pseq([0, 1], inf).durStep(24),
         3,
@@ -25,21 +25,29 @@ Pdef(\notes2, PS(Pbind(
         0
     ]),
     \degree, Pkey(\degree) + Pseq([0, 6, 3, -2], inf),
-)));
+).durStep(8)));
 
 
 Pdef(\van, Pbind(
     // \grainSampler_2ch,
     \instrument, \grainSampler_2ch,
-    \buf, SAMP("vanhalen/mixdown.wav", channels:1)[0],    
+    // \buf, SAMP("vanhalen/mixdown.wav", channels:1)[0],    
+    \buf, Prand([
+        // SAMP("zoom recordings/greece/SPTL003.WAV", channels:1)[0],    
+        SAMP("photek/full/*", channels:1)[0],
+        SAMP("photek/full/*", channels:1)[1],
+        SAMP("photek/full/*", channels:1)[2]
+    ], inf),    
     
     \dur, Pxstep(
         1 * Prand([5, 3, 2.4, 1.7, 0.2, 0.1, 0.54342, 0.7643, 0.123, 0.05], inf),
         3
     ),
-    \legato, 2,
+    \dur, Pbjorklund2(9, 16, inf, Pseq([2, 4], inf).durStep(2)) / 8,
+    \strum, Pwnrand([0, 3/8], [9, 2], inf),
+    \legato, Pwhite(1.2, 2),
     
-    \amp, 0.dbamp * [1, 1, 1, 1],
+    \amp, 14.dbamp * [1, 1, 1, 1],
     \pan, Pwhite(-1, 1),
     
     \pos, Pmod(
@@ -52,26 +60,28 @@ Pdef(\van, Pbind(
             trig = Decay.kr(trig, 6);
             
             SinOsc.ar(trig * rate + [0, 1/24].resamp1(4)).range(
-                "2:08".asSecs,
-                "2:54".asSecs
+                // "2:08".asSecs,
+                // "2:54".asSecs
+                "0:08".asSecs,
+                "1:54".asSecs
             )
-            + (290)
-            + LFTri.ar(1/128).range(0, 8)
+            + (0)
+            + LFTri.ar(1/256).range(0, 8)
         },
         \trig, 1,
         \rate, Pmod({
-            LFDNoise3.ar(1/5).exprange(1/260, 1/162)
+            LFDNoise3.ar(1/5).linexp(-1, 1, 1/160, 1/20)
         })
     ).expand,
     
     \trigRate, { ~detunedFreq.value * 1 },
     
     \density, Ptuple(
-        Pwhite(0.0, 1.0).lincurve(0, 1, 6, 220, 5).trace ! 4
+        Pwhite(0.0, 1.0).lincurve(0, 1, 6, 150, 5).trace ! 4
     ),
     
     \ampEnv, {
-        `(Env.perc(0.3, ~sustain.value, curve:-12 * [-1, 1]))
+        `(Env.perc(0.0001, ~sustain.value, curve:-12 * [-1, 1]))
     },
     \env, 0.02,
     
@@ -82,10 +92,10 @@ Pdef(\van, Pbind(
             // [0, 4, -12, 0]
             [0, -0.212, 0.234, 3]
             + 4.collect {
-                Env.sine(0.5).ar(gate:Dust.ar(0.12))
+                Env.sine(0.5).ar(gate:Dust.ar(0.7))
             }.linlin(0, 1, 0, 24)
             + 4.collect {
-                Env.sine(0.5).ar(gate:Dust.ar(0.12))
+                Env.sine(0.5).ar(gate:Dust.ar(0.5))
             }.linlin(0, 1, 0, -24)
         ).midiratio
     }),
@@ -121,18 +131,18 @@ Pdef(\delay, Pmono(
         }
     }).expand,
     \delayV, Pmod({
-        1 / LFDNoise3.ar(1/6).lincurve(-1, 1, 8, 200, -5)
+        1 / LFDNoise3.ar(1/6).lincurve(-1, 1, 16, 250, -5)
     }),
     
     // \octave, 2,
     // \degree, Pseq([0, -1], inf).durStep(16) + (1 * [0, 2.024, 5.03, 0.0253]),
     
     \delayRound, { ~detunedFreq.value.reciprocal },
-    \delayRoundLag, 0.05,
+    \delayRoundLag, 1,
     \delayRoundOffset, Pmod(
         {
             var roundOff = \roundOff.kr([1, 1, 1, 1]).lag(8);
-            1.3 * roundOff * LFDNoise3.ar(1/8).abs.lag(0.7 * [0.2, 1.0, 0.4, 0.0])
+            40.3 * roundOff * LFDNoise3.ar(1/8).abs.lag(0.7 * [0.2, 1.0, 0.4, 0.0])
         }, 
         \roundOff, Pkey(\delayRound)
     ).expand,
@@ -155,22 +165,23 @@ Pdef(\delay, Pmono(
         }
     }).expand,
     \grainRateV, 0.00012,
+    // \grainRate, { (~detunedFreq.value.cpsmidi - 28).midiratio.postln },
     
     \feedAmp, -46.dbamp,
     \feedDist, Pmod({
-        24 + Env.perc(2, 4, curve:\sine).ar(gate:Dust.ar(0.4)).linlin(0, 1, 0, 25)
+        14 + Env.perc(2, 4, curve:\sine).ar(gate:Dust.ar(0.4)).linlin(0, 1, 0, 25)
     }),
     
     \filtLo, 20,
     \filtHi, Pexprand(2000, 19900).durStep(12),
-    \filtLag, 24,
+    \filtLag, 12,
     
     \pan, Pmod({
         4.collect {
             0.8 * LFDNoise3.ar(1/4).range(-1, 1)
         }
     }),
-    \panV, 0.4,
+    \panV, 0.03,
     
     \amp, -20.dbamp,
     \dryAmp, 10.dbamp
@@ -182,9 +193,9 @@ Pdef(\teckDelay, Pmono(
     \inEnv, 0,
     
     \dist, 0,
-    \inAmp, -20.dbamp,
+    \inAmp, -30.dbamp,
     \amp, -12.dbamp,
-    \feed, -9.dbamp,
+    \feed, -6.dbamp,
     \dryAmp, 0.dbamp,
     \wetAmp, -12.dbamp,
 ));
@@ -273,3 +284,15 @@ Pdef(\player, Pio(Ppar(
                                                                                                                                                                                                                                                 
                                                                                                                                                                                                                                                     
                                                                                                                                                                                                                                                         
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                
+                                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                                
+                                                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                                                
+                                                                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                                                        
