@@ -17,26 +17,43 @@ Pdef(\notes, PS(Pbind(
 
 Pdef(\notes2, PS(Pbind(
     \scale, Scale.hexSus,
-    \octave, 3 + [0, 2, 1.01, 0],
+    \octave, 3 + [0, 1, 1.01, 0],
     \degree, 0 + Ptuple([
         Pseq([0, 1, 4], inf),
         Prand([3, 4, 7], inf),
         Pseq([-1, -2, 6, -2], inf),
         0
-    ]),
-    \degree, Pkey(\degree) + Pseq([0, 6, 3, -2], inf),
+    ]).durStep(16),
+    \degree, Pkey(\degree) + Pseq([0, 6, 3, -2], inf).durStep(8),
 )));
+
+Pdefn(\fade, PS(
+    // Pseg([0.5, 1, 0], 60 * [12, 4])
+    Pseg([0.0, 1, 1, 0], 60 * [12, 2, 4])
+));
+
 
 
 Pdef(\van, Pbind(
     // \grainSampler_2ch,
     \instrument, \grainSampler_2ch,
     \buf, SAMP("vanhalen/mixdown.wav", channels:1)[0],    
+    \fade, Pdefn(\fade),
     
-    \dur, Pxstep(
-        1 * Prand([5, 3, 2.4, 1.7, 0.2, 0.1, 0.54342, 0.7643, 0.123, 0.05], inf),
-        3
+    \dur, Pxfade([
+        12,
+        Pxstep(
+            1 * Prand([5, 3, 2.4, 1.7, 0.2, 0.1, 0.54342, 0.7643, 0.123, 0.05], inf),
+            3
+        ) + Pwnrand([0, 3, 8], [40, 1, 1], inf),
+        Pseg([1/20, 1/2, 1/20], [16, 4], \sine).repeat
+    ], Pkey(\fade).lincurve(0, 1, 0, 2, -3), \expBlend),
+    \strum, Pxfade(
+        [0, 0, 1/4, 0],
+        Pkey(\fade) * 3, 
+        \blend
     ),
+    
     \legato, 1.4,
     
     \amp, -6.dbamp * [1, 1, 1, 1],
@@ -70,8 +87,20 @@ Pdef(\van, Pbind(
         Pwhite(0.0, 1.0).lincurve(0, 1, 6, 220, 3) ! 4
     ),
     
+    \attack, Pxfade([
+        0.2,
+        0.02,
+        0.001
+    ], Pkey(\fade).lincurve(0, 1, 0, 2, 6), \random),
+    \envCurve, Pxfade([-8, -16, -20], Pkey(\fade) * 3, \blend),
     \ampEnv, {
-        `(Env.perc(0.0001, ~sustain.value, curve:-12 * [-1, 1]))
+        var attack;
+        var sustain = ~sustain.value;
+        var curve = ~envCurve.value;
+        
+        attack = blend(0.001, ~attack.value, ~fade.value);
+        
+        `(Env.perc(attack * sustain, (1 - attack) * sustain, curve:curve * [-1, 1]))
     },
     \env, 0.05,
     
@@ -190,7 +219,7 @@ Pdef(\teckDelay, Pmono(
     \reverbAmp, -20.dbamp,
     \kickAmp, -25.dbamp,
     \crushAmp, -20.dbamp,
-
+    
     \delayMult, 1
 ));
 
@@ -285,3 +314,4 @@ Pdef(\player, Pio(Ppar(
                                                                                                                                                                                                                                                                         
                                                                                                                                                                                                                                                                             
                                                                                                                                                                                                                                                                                 
+                                                                                                                                                                                                                                                                                    
